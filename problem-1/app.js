@@ -1,5 +1,27 @@
 const fs = require('fs');
 
+const areDatesOverlappingTarget = (
+	startDate,
+	endDate,
+	targetStartDate,
+	targetEndDate
+) => {
+	return startDate <= targetEndDate && (!endDate || endDate >= targetStartDate);
+};
+
+const getTargetDateMonthRange = (targetDate) => {
+	const targetDateMonthStart = new Date(targetDate);
+	const targetDateMonthEnd = new Date(
+		targetDateMonthStart.getFullYear(),
+		targetDateMonthStart.getMonth() + 1,
+		0, // last day of the month
+		23, // hour
+		59 // minute
+	);
+
+	return [targetDateMonthStart, targetDateMonthEnd];
+};
+
 const getDataFromCSV = (filePath) => {
 	const lines = fs.readFileSync(filePath, 'utf8').trim().split('\n');
 	const data = [];
@@ -23,24 +45,22 @@ const calculateRevenue = (targetDate, reservations) => {
 	let revenue = 0;
 	const oneDayInMs = 1000 * 60 * 60 * 24;
 
-	const targetDateMonthStart = new Date(targetDate);
-	const targetDateMonthEnd = new Date(
-		targetDateMonthStart.getFullYear(),
-		targetDateMonthStart.getMonth() + 1,
-		0, // last day
-		23, // hour
-		59 // minute
-	);
+	const [targetDateMonthStart, targetDateMonthEnd] =
+		getTargetDateMonthRange(targetDate);
 
 	reservations.forEach((reservation) => {
 		const startDate = new Date(reservation.startDay);
 		const endDate = reservation.endDay ? new Date(reservation.endDay) : null;
 
-		const overlaps =
-			startDate <= targetDateMonthEnd &&
-			(!endDate || endDate >= targetDateMonthStart);
-
-		if (!overlaps) return;
+		if (
+			!areDatesOverlappingTarget(
+				startDate,
+				endDate,
+				targetDateMonthStart,
+				targetDateMonthEnd
+			)
+		)
+			return;
 
 		const reservationOutboundsTargetMonthStart =
 			startDate < targetDateMonthStart;
@@ -80,17 +100,38 @@ const calculateRevenue = (targetDate, reservations) => {
 	return revenue;
 };
 
-// What is the total capacity of the unreserved offices for the month?An office is considered
-// reserved if it was reserved even for a single day for the given month.
-const calculateUnreservedCapacity = (targetDate, reservations) => {};
+const calculateUnreservedCapacity = (targetDate, reservations) => {
+	const [targetDateMonthStart, targetDateMonthEnd] =
+		getTargetDateMonthRange(targetDate);
+
+	let unreservedCapacity = 0;
+
+	reservations.forEach((reservation) => {
+		const start = new Date(reservation.startDay);
+		const end = reservation.endDay ? new Date(reservation.endDay) : null;
+
+		if (
+			!areDatesOverlappingTarget(
+				start,
+				end,
+				targetDateMonthStart,
+				targetDateMonthEnd
+			)
+		) {
+			unreservedCapacity += reservation.capacity;
+		}
+	});
+
+	return unreservedCapacity;
+};
 
 const main = () => {
 	const reservations = getDataFromCSV('data-source.csv');
 	const targetDates = ['2013-01', '2013-06', '2014-03', '2014-09', '2015-07'];
-	// const targetDate = ['2013-01'];
+
 	targetDates.forEach((date) => {
 		const revenue = calculateRevenue(date, reservations);
-		const unreservedCapacity = 0;
+		const unreservedCapacity = calculateUnreservedCapacity(date, reservations);
 
 		console.log(
 			`${date}: expected revenue: $${
