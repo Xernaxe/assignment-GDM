@@ -1,0 +1,9 @@
+package class function
+
+package p1
+ class c1_p1
+  function f1_c1_p1
+   *
+  endfunction
+ endclass
+endpackage
