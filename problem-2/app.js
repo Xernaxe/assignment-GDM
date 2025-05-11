@@ -33,7 +33,11 @@ const main = () => {
 			foundScopes.push(scope);
 		} else if (endScopes.includes(scope)) {
 			const expectedEndScope = endScopes.shift();
-			console.log(expectedEndScope);
+
+			if (expectedEndScope !== scope) {
+				errors.push('The scope is not correctly delimited.');
+				continue;
+			}
 		}
 	}
 
